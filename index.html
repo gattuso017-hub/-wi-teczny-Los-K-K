@@ -1,13 +1,16 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Świąteczny Los K&amp;K 🎄</title>
+
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;font-family:Arial,sans-serif;background:url('https://i.ibb.co/tBf5G6/christmas-bg.jpg') no-repeat center center fixed;background-size:cover;display:flex;justify-content:center;align-items:center;padding:20px}
@@ -35,27 +38,39 @@ input:focus{outline:none;border-color:#b30000}
 .warning{color:#b30000;font-weight:bold}
 .success{color:#168a2f;font-weight:bold}
 .winner{margin-top:10px;font-size:24px;color:#b30000}
-@media(max-width:500px){.container{padding:20px}.groups{gap:5px}.group-button{padding:15px 3px;font-size:17px}}
+@media(max-width:500px){
+.container{padding:20px}
+.groups{gap:5px}
+.group-button{padding:15px 3px;font-size:17px}
+}
 </style>
 </head>
+
 <body>
 <div class="container">
 <h1 id="title">🎄 Świąteczny Los K&amp;K 🎁</h1>
 <p>Wpisz swoje imię, a następnie wybierz jedną z dostępnych grup.</p>
+
 <input type="text" id="nameInput" placeholder="Wpisz swoje imię..." autocomplete="off">
+
 <div id="available">Sprawdzanie dostępności...</div>
+
 <h2>Wybierz grupę</h2>
 <p>Wybierz A, B, C lub D.</p>
+
 <div class="groups">
 <button class="group-button" data-group="1">A</button>
 <button class="group-button" data-group="2">B</button>
 <button class="group-button" data-group="3">C</button>
 <button class="group-button" data-group="4">D</button>
 </div>
+
 <div id="result"></div>
 <div id="qrCode"></div>
+
 <div id="adminPanel">
 <h2>🔐 Panel administratora</h2>
+
 <div id="adminLogin">
 <p>Zaloguj się jako administrator.</p>
 <input type="email" id="adminEmail" placeholder="E-mail administratora" autocomplete="username">
@@ -63,6 +78,7 @@ input:focus{outline:none;border-color:#b30000}
 <button class="admin-button" id="adminLoginButton">Zaloguj administratora</button>
 <div id="adminLoginResult"></div>
 </div>
+
 <div id="adminControls" style="display:none;">
 <p>✅ Zalogowano jako administrator.</p>
 <button class="admin-button" id="loadLogs">Pokaż wyniki</button>
@@ -72,6 +88,7 @@ input:focus{outline:none;border-color:#b30000}
 </div>
 </div>
 </div>
+
 <script>
 const firebaseConfig={
 apiKey:"AIzaSyD6z8n6KYGWUclXdoS85aj7T_U5HKyGKZA",
@@ -81,26 +98,28 @@ storageBucket:"swiateczny-los-kk.firebasestorage.app",
 messagingSenderId:"880321205108",
 appId:"1:880321205108:web:9b7eec39d5999ed5cc9221"
 };
+
 firebase.initializeApp(firebaseConfig);
+
 const db=firebase.firestore();
 const auth=firebase.auth();
 const CURRENT_YEAR=2026;
 const ADMIN_UID="NnhwCPIk6yOveCvr5QPb1yTiJjw1";
 
 const groups={
-1:["Iwona","Sebastian"],
-2:["Kinga","Dawid"],
-3:["Kasia","Kamil"],
-4:["Nikola","Kornel"]
+1:["Kasia", "Kamil"],
+2:["Nikola", "Kornel"],
+3:["Iwona","Sebastian"],
+4:["Kinga", "Dawid"]
 };
 
 const users=["Nikola","Iwona","Kinga","Kasia"];
 
 const userGroups={
-"Kinga":2,
-"Kasia":3,
-"Nikola":4,
-"Iwona":1
+"Iwona":3,
+"Kinga":4,
+"Kasia":1,
+"Nikola":2
 };
 
 const nameInput=document.getElementById("nameInput");
@@ -120,50 +139,68 @@ function groupLetter(groupNumber){
 return String.fromCharCode(64+Number(groupNumber));
 }
 
-/*
-ZABEZPIECZENIE PRZED ZABLOKOWANIEM OSTATNIEJ OSOBY.
-
-Funkcja sprawdza, czy pozostali uczestnicy mogą zostać
-przypisani do różnych dostępnych grup, bez losowania
-przez kogokolwiek jego własnej grupy.
-
-Jeśli nie istnieje prawidłowe przypisanie, wybór zostanie
-odrzucony jeszcze przed zapisaniem go w bazie.
-*/
-function canCompleteAssignment(remainingUsers,availableGroups){
-if(remainingUsers.length===0)return true;
-if(remainingUsers.length!==availableGroups.length)return false;
-
-const orderedUsers=remainingUsers.map(user=>({
-user,
-options:availableGroups.filter(group=>userGroups[user]!==group)
-})).sort((a,b)=>a.options.length-b.options.length);
-
-function assignNext(index,unusedGroups){
-if(index>=orderedUsers.length)return true;
-const person=orderedUsers[index];
-const options=person.options.filter(group=>unusedGroups.includes(group));
-
-for(const group of options){
-const nextUnused=unusedGroups.filter(available=>available!==group);
-if(assignNext(index+1,nextUnused))return true;
-}
-return false;
-}
-
-return assignNext(0,availableGroups.slice());
-}
-
-function escapeHtml(text){
+function escapeHtml(value){
 const div=document.createElement("div");
-div.textContent=text;
+div.textContent=String(value);
 return div.innerHTML;
 }
 
 function isAdmin(){
 const user=auth.currentUser;
-if(!user)return false;
-return !user.isAnonymous&&user.uid===ADMIN_UID;
+return !!user&&!user.isAnonymous&&user.uid===ADMIN_UID;
+}
+
+/*
+POPRAWIONE SPRAWDZANIE PRZYPISAŃ
+
+Sprawdza, czy wszystkie pozostałe osoby mogą otrzymać
+różne grupy, bez otrzymania własnej grupy.
+
+Zwraca false, jeśli liczba osób i grup się nie zgadza
+lub nie istnieje żadne prawidłowe przypisanie.
+*/
+function canCompleteAssignment(remainingUsers,availableGroups){
+if(remainingUsers.length!==availableGroups.length){
+return false;
+}
+
+if(remainingUsers.length===0){
+return true;
+}
+
+const candidates=remainingUsers.map(user=>({
+user,
+options:availableGroups.filter(group=>userGroups[user]!==group)
+})).sort((a,b)=>a.options.length-b.options.length);
+
+if(candidates.some(person=>person.options.length===0)){
+return false;
+}
+
+function assignNext(index,unusedGroups){
+if(index===candidates.length){
+return true;
+}
+
+const person=candidates[index];
+
+for(const group of person.options){
+if(!unusedGroups.has(group)){
+continue;
+}
+
+const nextUnused=new Set(unusedGroups);
+nextUnused.delete(group);
+
+if(assignNext(index+1,nextUnused)){
+return true;
+}
+}
+
+return false;
+}
+
+return assignNext(0,new Set(availableGroups));
 }
 
 async function updateAvailableUsers(){
@@ -174,7 +211,7 @@ const snapshot=await db.collection("drawsKK")
 const drawnUsers=snapshot.docs.map(doc=>doc.data().user);
 const availableUsers=users.filter(user=>!drawnUsers.includes(user));
 
-if(availableUsers.length>0){
+if(availableUsers.length){
 availableDiv.innerHTML="Dostępni do losowania: "+
 '<strong class="available-names">'+
 escapeHtml(availableUsers.join(", "))+"</strong>";
@@ -189,20 +226,32 @@ availableDiv.textContent="⚠️ Problem z połączeniem z bazą danych.";
 
 async function updateGroupButtons(){
 try{
-const snapshot=await db.collection("groupLocksKK")
-.where("year","==",CURRENT_YEAR).get();
+const [drawsSnapshot,locksSnapshot]=await Promise.all([
+db.collection("drawsKK").where("year","==",CURRENT_YEAR).get(),
+db.collection("groupLocksKK").where("year","==",CURRENT_YEAR).get()
+]);
 
-const takenGroups=snapshot.docs.map(doc=>Number(doc.data().group));
+// Uwzględnij zarówno blokady, jak i grupy zapisane w losowaniach.
+const takenGroups=new Set();
+
+locksSnapshot.docs.forEach(doc=>{
+const group=Number(doc.data().group);
+if(Number.isInteger(group))takenGroups.add(group);
+});
+
+drawsSnapshot.docs.forEach(doc=>{
+const group=Number(doc.data().group);
+if(Number.isInteger(group))takenGroups.add(group);
+});
 
 groupButtons.forEach(button=>{
 const group=Number(button.dataset.group);
-if(takenGroups.includes(group)){
-button.disabled=true;
-button.title="Ta grupa została już wykorzystana.";
-}else{
-button.disabled=false;
-button.title="";
-}
+const taken=takenGroups.has(group);
+
+button.disabled=taken;
+button.title=taken
+?"Ta grupa została już wykorzystana."
+:"";
 });
 }catch(error){
 console.error("Błąd aktualizacji grup:",error);
@@ -210,8 +259,10 @@ console.error("Błąd aktualizacji grup:",error);
 }
 
 async function updateEverything(){
-await updateGroupButtons();
-await updateAvailableUsers();
+await Promise.all([
+updateGroupButtons(),
+updateAvailableUsers()
+]);
 }
 
 nameInput.addEventListener("input",function(){
@@ -235,81 +286,113 @@ resultDiv.innerHTML='<span class="warning">Nie znaleziono tego imienia.</span>';
 return;
 }
 
-resultDiv.textContent="⏳ Losowanie...";
+if(!Number.isInteger(selectedGroup)||!groups[selectedGroup]){
+resultDiv.innerHTML='<span class="warning">Nieprawidłowa grupa.</span>';
+return;
+}
+
+resultDiv.textContent="⏳ Sprawdzanie możliwości losowania...";
 
 try{
 await db.runTransaction(async transaction=>{
 
-const drawRef=db.collection("drawsKK")
-.doc(CURRENT_YEAR+"_"+selectedName);
-
-const groupLockRef=db.collection("groupLocksKK")
-.doc(CURRENT_YEAR+"_"+selectedGroup);
-
 /*
-Pobieramy wszystkie dokumenty losowań i blokad grup
-w tej samej transakcji, aby sprawdzenie opierało się
-na aktualnym stanie bazy.
+WAŻNE:
+Wszystkie odczyty wykonujemy przed pierwszym zapisem.
+Firestore może ponowić transakcję, jeśli inny użytkownik
+zmieni dokumenty w czasie losowania.
 */
+
+const drawRefs={};
 const drawSnapshots={};
+
 for(const user of users){
-const ref=db.collection("drawsKK")
+drawRefs[user]=db.collection("drawsKK")
 .doc(CURRENT_YEAR+"_"+user);
-drawSnapshots[user]=await transaction.get(ref);
 }
 
-const groupSnapshots={};
+const lockRefs={};
+const lockSnapshots={};
+
 for(const group of Object.keys(groups).map(Number)){
-const ref=db.collection("groupLocksKK")
+lockRefs[group]=db.collection("groupLocksKK")
 .doc(CURRENT_YEAR+"_"+group);
-groupSnapshots[group]=await transaction.get(ref);
 }
 
-const drawDoc=drawSnapshots[selectedName];
-const groupDoc=groupSnapshots[selectedGroup];
+for(const user of users){
+drawSnapshots[user]=await transaction.get(drawRefs[user]);
+}
 
-if(drawDoc&&drawDoc.exists){
+for(const group of Object.keys(groups).map(Number)){
+lockSnapshots[group]=await transaction.get(lockRefs[group]);
+}
+
+// 1. Uczestnik może losować tylko raz.
+if(drawSnapshots[selectedName].exists){
 throw new Error("ALREADY_DRAWN");
 }
 
-if(groupDoc&&groupDoc.exists){
-throw new Error("GROUP_TAKEN");
-}
-
+// 2. Nie wolno wylosować własnej grupy.
 if(userGroups[selectedName]===selectedGroup){
 throw new Error("OWN_GROUP");
 }
 
-const alreadyDrawnUsers=users.filter(
-user=>drawSnapshots[user]&&drawSnapshots[user].exists
+// 3. Zbierz grupy zajęte na podstawie obu kolekcji.
+// Chroni to również przed niespójnością starszych danych.
+const alreadyTakenGroups=new Set();
+
+for(const group of Object.keys(groups).map(Number)){
+if(lockSnapshots[group].exists){
+alreadyTakenGroups.add(group);
+}
+}
+
+for(const user of users){
+const snapshot=drawSnapshots[user];
+
+if(snapshot.exists){
+const data=snapshot.data();
+const group=Number(data.group);
+
+if(Number.isInteger(group)&&groups[group]){
+alreadyTakenGroups.add(group);
+}
+}
+}
+
+// 4. Nie można wybrać już wykorzystanej grupy.
+if(alreadyTakenGroups.has(selectedGroup)){
+throw new Error("GROUP_TAKEN");
+}
+
+// 5. Ustal pozostałe osoby i dostępne grupy.
+// Wybrana osoba i grupa są traktowane jako przypisane
+// na potrzeby symulacji, ale jeszcze nie są zapisywane.
+const alreadyDrawnUsers=users.filter(user=>
+drawSnapshots[user].exists
 );
 
-const alreadyTakenGroups=Object.keys(groups).map(Number).filter(
-group=>groupSnapshots[group]&&groupSnapshots[group].exists
+const remainingUsers=users.filter(user=>
+user!==selectedName&&!alreadyDrawnUsers.includes(user)
 );
 
-/*
-Sprawdzamy sytuację PO hipotetycznym zaakceptowaniu
-wyboru bieżącej osoby.
-
-Z listy pozostałych osób usuwamy osobę losującą.
-Z dostępnych grup usuwamy wybraną grupę.
-Jeśli pozostałe osoby nie mają poprawnego przypisania,
-transakcja zostaje przerwana.
-*/
-const remainingUsers=users.filter(
-user=>user!==selectedName&&!alreadyDrawnUsers.includes(user)
+const remainingGroups=Object.keys(groups)
+.map(Number)
+.filter(group=>
+group!==selectedGroup&&!alreadyTakenGroups.has(group)
 );
 
-const remainingGroups=Object.keys(groups).map(Number).filter(
-group=>group!==selectedGroup&&!alreadyTakenGroups.includes(group)
-);
-
+// 6. Odrzuć wybór, jeśli po jego zaakceptowaniu choć jedna
+// osoba mogłaby zostać bez prawidłowej grupy.
 if(!canCompleteAssignment(remainingUsers,remainingGroups)){
 throw new Error("NO_VALID_COMPLETION");
 }
 
-const selectedMembers=groups[selectedGroup]||[];
+// 7. Dopiero po wszystkich sprawdzeniach zapisujemy wynik
+// oraz blokadę w tej samej transakcji.
+const drawRef=drawRefs[selectedName];
+const groupLockRef=lockRefs[selectedGroup];
+const selectedMembers=groups[selectedGroup];
 
 transaction.set(drawRef,{
 year:CURRENT_YEAR,
@@ -326,7 +409,7 @@ timestamp:firebase.firestore.FieldValue.serverTimestamp()
 });
 });
 
-const winnerMembers=groups[selectedGroup]||[];
+const winnerMembers=groups[selectedGroup];
 
 resultDiv.innerHTML=
 '<span class="success">🎉 Losowanie zakończone!</span>'+
@@ -336,6 +419,7 @@ groupLetter(selectedGroup)+'</div><br>'+
 escapeHtml(winnerMembers.join(", "))+"</strong>";
 
 qrCodeDiv.innerHTML="";
+
 new QRCode(qrCodeDiv,{
 text:window.location.href,
 width:150,
@@ -345,12 +429,12 @@ height:150
 await updateEverything();
 
 }catch(error){
-console.error(error);
+console.error("Błąd losowania:",error);
 
 if(error.message==="ALREADY_DRAWN"){
 resultDiv.innerHTML='<span class="warning">To imię ma już wykonane losowanie.</span>';
 }else if(error.message==="GROUP_TAKEN"){
-resultDiv.innerHTML='<span class="warning">Ta opcja jest już niedostępna. Wybierz inną.</span>';
+resultDiv.innerHTML='<span class="warning">Ta grupa jest już wykorzystana. Wybierz inną.</span>';
 await updateGroupButtons();
 }else if(error.message==="OWN_GROUP"){
 resultDiv.innerHTML='<span class="warning">Nie możesz wylosować własnej grupy. Wybierz inną.</span>';
@@ -367,17 +451,9 @@ resultDiv.innerHTML='<span class="warning">Wystąpił problem. Spróbuj ponownie
 function setupRealtimeUpdates(){
 db.collection("drawsKK")
 .where("year","==",CURRENT_YEAR)
-.onSnapshot(snapshot=>{
-const drawnUsers=snapshot.docs.map(doc=>doc.data().user);
-const availableUsers=users.filter(user=>!drawnUsers.includes(user));
-
-if(availableUsers.length>0){
-availableDiv.innerHTML="Dostępni do losowania: "+
-'<strong class="available-names">'+
-escapeHtml(availableUsers.join(", "))+"</strong>";
-}else{
-availableDiv.textContent="🎉 Wszyscy już dokonali losowania!";
-}
+.onSnapshot(()=>{
+updateAvailableUsers();
+updateGroupButtons();
 },error=>{
 console.error("Błąd nasłuchiwania draws:",error);
 });
@@ -393,7 +469,8 @@ console.error("Błąd nasłuchiwania grup:",error);
 
 document.getElementById("title").addEventListener("dblclick",function(){
 adminPanel.style.display="block";
-adminLogin.style.display="block";
+adminLogin.style.display=isAdmin()?"none":"block";
+adminControls.style.display=isAdmin()?"block":"none";
 });
 
 document.getElementById("adminLoginButton").addEventListener("click",async function(){
@@ -438,7 +515,7 @@ alert("Brak uprawnień administratora.");
 return;
 }
 
-adminLogs.innerHTML="⏳ Ładowanie wyników...";
+adminLogs.textContent="⏳ Ładowanie wyników...";
 
 try{
 const snapshot=await db.collection("drawsKK")
@@ -452,25 +529,27 @@ return;
 }
 
 const results=snapshot.docs.map(doc=>doc.data())
-.sort((a,b)=>a.user.localeCompare(b.user,"pl"));
+.sort((a,b)=>String(a.user).localeCompare(String(b.user),"pl"));
 
 results.forEach(data=>{
 const groupNumber=Number(data.group);
 const letter=groupLetter(groupNumber);
 const members=groups[groupNumber]||[];
+
 const div=document.createElement("div");
 div.className="log";
 
 div.innerHTML="👤 <strong>"+escapeHtml(data.user)+
 "</strong><br>🎯 Wybrana grupa: <strong>"+letter+
-"</strong><br>👥 Osoby w grupie: "+escapeHtml(members.join(", "));
+"</strong><br>👥 Osoby w grupie: "+
+escapeHtml(members.join(", "));
 
 adminLogs.appendChild(div);
 });
 
 }catch(error){
 console.error(error);
-adminLogs.innerHTML="⚠️ Nie udało się pobrać wyników.";
+adminLogs.textContent="⚠️ Nie udało się pobrać wyników.";
 }
 });
 
@@ -480,16 +559,19 @@ alert("Brak uprawnień administratora.");
 return;
 }
 
-const confirmation=prompt("Aby zresetować losowanie K&K 2026, wpisz: RESET");
+const confirmation=prompt(
+"Aby zresetować losowanie K&K 2026, wpisz: RESET"
+);
 
 if(confirmation!=="RESET")return;
 
 try{
-const drawsSnapshot=await db.collection("drawsKK")
-.where("year","==",CURRENT_YEAR).get();
-
-const groupsSnapshot=await db.collection("groupLocksKK")
-.where("year","==",CURRENT_YEAR).get();
+const [drawsSnapshot,groupsSnapshot]=await Promise.all([
+db.collection("drawsKK")
+.where("year","==",CURRENT_YEAR).get(),
+db.collection("groupLocksKK")
+.where("year","==",CURRENT_YEAR).get()
+]);
 
 const batch=db.batch();
 
@@ -524,7 +606,6 @@ adminLoginResult.innerHTML="";
 alert("Administrator został wylogowany.");
 
 await auth.signInAnonymously();
-
 }catch(error){
 console.error(error);
 }
